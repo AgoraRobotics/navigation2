@@ -25,6 +25,7 @@
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "pluginlib/class_loader.hpp"
 #include "nav2_behavior_tree/bt_action_server.hpp"
+#include "nav2_util/odometry_utils.hpp"
 
 namespace nav2_bt_navigator
 {
@@ -287,9 +288,11 @@ protected:
    * @param Method to configure resources.
    */
   virtual bool configure(
-    rclcpp_lifecycle::LifecycleNode::WeakPtr /*node*/
-    std::shared_ptr<nav2_util::OdomSmoother> /*odom_smoother*/)
+    rclcpp_lifecycle::LifecycleNode::WeakPtr node,
+    std::shared_ptr<nav2_util::OdomSmoother> odom_smoother)
   {
+    (void)node;
+    (void)odom_smoother;
     return true;
   }
 

@@ -1,0 +1,12 @@
+
+<root main_tree_to_execute="MainTree">
+    <BehaviorTree ID="MainTree">
+        <Sequence>
+            <ReinitializeGlobalLocalization service_name="reinitialize_global_localization"/>
+            <ReactiveFallback name="NavigateWithReplanning">
+                <DistanceTraveled distance="0.4" global_frame="map" robot_base_frame="base_link"/>
+                <BackUp backup_dist="-2.2" backup_speed="0.05" server_name="backup" server_timeout="10"/>
+            </ReactiveFallback>
+        </Sequence>
+    </BehaviorTree>
+</root>
