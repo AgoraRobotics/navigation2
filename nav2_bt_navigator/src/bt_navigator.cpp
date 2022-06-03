@@ -40,6 +40,7 @@ BtNavigator::BtNavigator()
     "nav2_back_up_action_bt_node",
     "nav2_spin_action_bt_node",
     "nav2_wait_action_bt_node",
+    "nav2_wait_unity_to_send_stop_action_bt_node",
     "nav2_clear_costmap_service_bt_node",
     "nav2_is_stuck_condition_bt_node",
     "nav2_goal_reached_condition_bt_node",
