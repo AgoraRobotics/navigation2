@@ -115,6 +115,14 @@ MapServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
     service_prefix + std::string(load_map_service_name_),
     std::bind(&MapServer::loadMapCallback, this, _1, _2, _3));
 
+  // Create a service that loads the occupancy grid from a file
+  // widthout publishing it to map topic
+  // modulab edit
+  load_map_service_modulab_ = create_service<nav2_msgs::srv::LoadMap>(
+    service_prefix + std::string(load_map_service_modulab_name_),
+    std::bind(&MapServer::loadMapModulabCallback, this, _1, _2, _3));
+
+
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
@@ -155,6 +163,7 @@ MapServer::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   occ_pub_.reset();
   occ_service_.reset();
   load_map_service_.reset();
+  load_map_service_modulab_.reset();
 
   return nav2_util::CallbackReturn::SUCCESS;
 }
@@ -201,6 +210,26 @@ void MapServer::loadMapCallback(
     occ_pub_->publish(std::move(occ_grid));  // publish new map
   }
 }
+
+
+void MapServer::loadMapModulabCallback(
+  const std::shared_ptr<rmw_request_id_t>/*request_header*/,
+  const std::shared_ptr<nav2_msgs::srv::LoadMap::Request> request,
+  std::shared_ptr<nav2_msgs::srv::LoadMap::Response> response)
+{
+  // if not in ACTIVE state, ignore request
+  if (get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+    RCLCPP_WARN(
+      get_logger(),
+      "Received LoadMap request but not in ACTIVE state, ignoring!");
+    return;
+  }
+  RCLCPP_INFO(get_logger(), "Handling LoadMap request");
+  // Load from file
+  loadMapResponseFromYaml(request->map_url, response);
+
+}
+
 
 bool MapServer::loadMapResponseFromYaml(
   const std::string & yaml_file,

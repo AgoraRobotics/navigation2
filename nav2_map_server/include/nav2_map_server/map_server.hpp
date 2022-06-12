@@ -117,17 +117,31 @@ protected:
     const std::shared_ptr<nav2_msgs::srv::LoadMap::Request> request,
     std::shared_ptr<nav2_msgs::srv::LoadMap::Response> response);
 
+void loadMapModulabCallback(
+    const std::shared_ptr<rmw_request_id_t> request_header,
+    const std::shared_ptr<nav2_msgs::srv::LoadMap::Request> request,
+    std::shared_ptr<nav2_msgs::srv::LoadMap::Response> response);
+
+
   // The name of the service for getting a map
   const std::string service_name_{"map"};
 
   // The name of the service for loading a map
   const std::string load_map_service_name_{"load_map"};
 
+  // The name of the service for loading a map
+  const std::string load_map_service_modulab_name_{"load_map_modulab"};
+
   // A service to provide the occupancy grid (GetMap) and the message to return
   rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr occ_service_;
 
   // A service to load the occupancy grid from file at run time (LoadMap)
   rclcpp::Service<nav2_msgs::srv::LoadMap>::SharedPtr load_map_service_;
+
+// A service to load the occupancy grid from file at run time (LoadMap)
+//modulab version - fara publish pe topic map
+  rclcpp::Service<nav2_msgs::srv::LoadMap>::SharedPtr load_map_service_modulab_;
+
 
   // A topic on which the occupancy grid will be published
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::OccupancyGrid>::SharedPtr occ_pub_;
