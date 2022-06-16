@@ -1,0 +1,11 @@
+<!--
+  This Behavior Tree follows a dynamic pose to a certain distance
+-->
+
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <PipelineSequence name="NavigateWithReplanning">
+        <Spin spin_dist="1.57"/>
+    </PipelineSequence>
+  </BehaviorTree>
+</root>
