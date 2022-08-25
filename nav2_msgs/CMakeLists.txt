@@ -24,6 +24,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ParticleCloud.msg"
   "srv/GetCostmap.srv"
   "srv/ClearCostmapExceptRegion.srv"
+  "srv/CompleteCoverage.srv"
   "srv/ClearCostmapAroundRobot.srv"
   "srv/ClearEntireCostmap.srv"
   "srv/ManageLifecycleNodes.srv"

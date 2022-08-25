@@ -51,6 +51,10 @@ ament_target_dependencies(${library_name}
   ${dependencies}
 )
 
+add_library(complete_coverage_service_bt_node SHARED plugins/action/complete_coverage_service.cpp)
+list(APPEND plugin_libs complete_coverage_service_bt_node)
+
+
 add_library(nav2_compute_path_to_pose_action_bt_node SHARED plugins/action/compute_path_to_pose_action.cpp)
 list(APPEND plugin_libs nav2_compute_path_to_pose_action_bt_node)
 
