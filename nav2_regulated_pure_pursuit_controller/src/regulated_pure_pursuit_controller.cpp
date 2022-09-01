@@ -566,10 +566,11 @@ nav_msgs::msg::Path RegulatedPurePursuitController::transformGlobalPlan(
   const double max_costmap_dim = std::max(costmap->getSizeInCellsX(), costmap->getSizeInCellsY());
   const double max_transform_dist = max_costmap_dim * costmap->getResolution() / 2.0;
 
+  std::cout << "global_plan size " << global_plan_.poses.size() << std::endl;
   // First find the closest pose on the path to the robot
   auto transformation_begin =
     nav2_util::geometry_utils::min_by(
-    global_plan_.poses.begin(), global_plan_.poses.end(),
+    global_plan_.poses.begin(), std::next(global_plan_.poses.begin(), 100),
     [&robot_pose](const geometry_msgs::msg::PoseStamped & ps) {
       return euclidean_distance(robot_pose, ps);
     });
