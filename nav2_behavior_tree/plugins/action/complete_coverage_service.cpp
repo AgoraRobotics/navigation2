@@ -9,7 +9,7 @@ namespace nav2_behavior_tree
 CompleteCoverageService::CompleteCoverageService(
   const std::string & service_node_name,
   const BT::NodeConfiguration & conf)
-: BtServiceNode<nav2_msgs::srv::CompleteCoverage>(service_node_name, conf)
+: BtServiceNode<nav2_msgs::srv::CompleteCoverageArray>(service_node_name, conf)
 {
 }
 
