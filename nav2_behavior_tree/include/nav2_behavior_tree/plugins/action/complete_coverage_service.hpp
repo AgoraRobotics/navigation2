@@ -5,7 +5,7 @@
 
 #include "nav2_behavior_tree/bt_service_node.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "nav2_msgs/srv/complete_coverage.hpp"
+#include "nav2_msgs/srv/complete_coverage_array.hpp"
 
 namespace nav2_behavior_tree
 {
@@ -13,7 +13,7 @@ namespace nav2_behavior_tree
 /**
  * @brief A nav2_behavior_tree::BtServiceNode class that wraps nav2_msgs::srv::CompleteCoverage
  */
-class CompleteCoverageService : public BtServiceNode<nav2_msgs::srv::CompleteCoverage>
+class CompleteCoverageService : public BtServiceNode<nav2_msgs::srv::CompleteCoverageArray>
 {
 public:
   /**
@@ -42,7 +42,7 @@ public:
   {
     return providedBasicPorts(
       {
-        BT::OutputPort<nav_msgs::msg::Path>("output_path", "Coverage planning path"),
+        BT::OutputPort<std::vector<geometry_msgs::msg::PoseStamped>>("output_path", "Coverage planning path"),
       });
   }
 

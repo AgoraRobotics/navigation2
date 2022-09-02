@@ -1,10 +1,10 @@
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
-    <Sequence name="NavigateWithReplanning">
-      <CompleteCoverage service_name="complete_coverage" server_timeout="4000" output_path="{path}"/>
-      <ComputePathThroughPoses goals="{path}" path="{globalpath}" planner_id="GridBased"/>
+    <Sequence name="NavigateWithReplanning">      
+      <CompleteCoverage service_name="complete_coverage" server_timeout="18000" output_path="{goals}"/>
+      <ComputePathThroughPoses goals="{goals}" path="{path}" planner_id="GridBased"/>
       <KeepRunningUntilFailure>
-        <FollowPath path="{globalpath}" controller_id="FollowPath"/>
+        <FollowPath path="{path}" controller_id="FollowPath"/>
       </KeepRunningUntilFailure>
     </Sequence>
   </BehaviorTree>
