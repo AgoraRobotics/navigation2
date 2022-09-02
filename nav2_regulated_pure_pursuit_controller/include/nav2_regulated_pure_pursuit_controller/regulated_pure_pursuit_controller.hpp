@@ -135,6 +135,13 @@ protected:
    */
   double getLookAheadDistance(const geometry_msgs::msg::Twist &);
 
+
+  /**
+   * Get the greatest extent of the costmap in meters from the center.
+   * @return max of distance from center in meters to edge of costmap
+   */
+  double getCostmapMaxExtent() const;
+
   /**
    * @brief Creates a PointStamped message for visualization
    * @param carrot_pose Input carrot point as a PoseStamped
@@ -259,6 +266,7 @@ protected:
   double rotate_to_heading_min_angle_;
   double goal_dist_tol_;
   bool allow_reversing_;
+  double max_robot_pose_search_dist_;
 
   nav_msgs::msg::Path global_plan_;
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>> global_path_pub_;

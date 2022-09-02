@@ -107,6 +107,28 @@ inline Iter min_by(Iter begin, Iter end, Getter getCompareVal)
   return lowest_it;
 }
 
+
+/**
+ * Find first element in iterator that is greater integrated distance than comparevalue
+ */
+template<typename Iter, typename Getter>
+inline Iter first_after_integrated_distance(Iter begin, Iter end, Getter getCompareVal)
+{
+  if (begin == end) {
+    return end;
+  }
+  Getter dist = 0.0;
+  for (Iter it = begin; it != end - 1; it++) {
+    dist += euclidean_distance(*it, *(it + 1));
+    if (dist > getCompareVal) {
+      return it + 1;
+    }
+  }
+  return end;
+}
+
+
+
 /**
  * @brief Calculate the length of the provided path, starting at the provided index
  * @param path Path containing the poses that are planned

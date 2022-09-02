@@ -103,6 +103,9 @@ void RegulatedPurePursuitController::configure(
     node, plugin_name_ + ".max_angular_accel", rclcpp::ParameterValue(3.2));
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".allow_reversing", rclcpp::ParameterValue(false));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".max_robot_pose_search_dist",
+    rclcpp::ParameterValue(getCostmapMaxExtent()));    
 
   node->get_parameter(plugin_name_ + ".desired_linear_vel", desired_linear_vel_);
   base_desired_linear_vel_ = desired_linear_vel_;
@@ -148,6 +151,7 @@ void RegulatedPurePursuitController::configure(
   node->get_parameter(plugin_name_ + ".max_angular_accel", max_angular_accel_);
   node->get_parameter(plugin_name_ + ".allow_reversing", allow_reversing_);
   node->get_parameter("controller_frequency", control_frequency);
+  node->get_parameter(plugin_name_ + ".max_robot_pose_search_dist", max_robot_pose_search_dist_);
 
   transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
   control_duration_ = 1.0 / control_frequency;
@@ -566,11 +570,15 @@ nav_msgs::msg::Path RegulatedPurePursuitController::transformGlobalPlan(
   const double max_costmap_dim = std::max(costmap->getSizeInCellsX(), costmap->getSizeInCellsY());
   const double max_transform_dist = max_costmap_dim * costmap->getResolution() / 2.0;
 
-  std::cout << "global_plan size " << global_plan_.poses.size() << std::endl;
+
+  auto closest_pose_upper_bound =
+    nav2_util::geometry_utils::first_after_integrated_distance(
+    global_plan_.poses.begin(), global_plan_.poses.end(), max_robot_pose_search_dist_);
+
   // First find the closest pose on the path to the robot
   auto transformation_begin =
     nav2_util::geometry_utils::min_by(
-    global_plan_.poses.begin(), std::next(global_plan_.poses.begin(), 100),
+    global_plan_.poses.begin(), closest_pose_upper_bound,
     [&robot_pose](const geometry_msgs::msg::PoseStamped & ps) {
       return euclidean_distance(robot_pose, ps);
     });
@@ -660,6 +668,16 @@ bool RegulatedPurePursuitController::transformPose(
   }
   return false;
 }
+
+
+double RegulatedPurePursuitController::getCostmapMaxExtent() const
+{
+  const double max_costmap_dim_meters = std::max(
+    costmap_->getSizeInMetersX(), costmap_->getSizeInMetersY());
+  return max_costmap_dim_meters / 2.0;
+}
+
+
 }  // namespace nav2_regulated_pure_pursuit_controller
 
 // Register this controller as a nav2_core plugin
