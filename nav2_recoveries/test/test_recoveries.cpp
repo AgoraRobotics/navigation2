@@ -125,7 +125,7 @@ protected:
       node_lifecycle_, costmap_topic);
     std::shared_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_ =
       std::make_shared<nav2_costmap_2d::FootprintSubscriber>(
-      node_lifecycle_, footprint_topic, 1.0);
+      node_lifecycle_, footprint_topic, *tf_buffer_, "", 1.0);
     std::shared_ptr<nav2_costmap_2d::CostmapTopicCollisionChecker> collision_checker_ =
       std::make_shared<nav2_costmap_2d::CostmapTopicCollisionChecker>(
       *costmap_sub_, *footprint_sub_, *tf_buffer_,

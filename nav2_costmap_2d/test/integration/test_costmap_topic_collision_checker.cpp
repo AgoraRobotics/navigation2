@@ -72,8 +72,9 @@ class DummyFootprintSubscriber : public nav2_costmap_2d::FootprintSubscriber
 public:
   DummyFootprintSubscriber(
     nav2_util::LifecycleNode::SharedPtr node,
-    std::string & topic_name)
-  : FootprintSubscriber(node, topic_name, 10.0)
+    std::string & topic_name,
+    tf2_ros::Buffer & tf)    
+  : FootprintSubscriber(node, topic_name, tf, "xxxx", 0.1)
   {}
 
   void setFootprint(geometry_msgs::msg::PolygonStamped::SharedPtr msg)
@@ -122,7 +123,9 @@ public:
 
     footprint_sub_ = std::make_shared<DummyFootprintSubscriber>(
       shared_from_this(),
-      footprint_topic);
+      footprint_topic,
+      *tf_buffer_
+      );
 
     collision_checker_ = std::make_unique<nav2_costmap_2d::CostmapTopicCollisionChecker>(
       *costmap_sub_, *footprint_sub_, *tf_buffer_, get_name(), "map");

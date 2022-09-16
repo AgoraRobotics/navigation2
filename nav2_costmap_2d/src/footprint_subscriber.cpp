@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "nav2_costmap_2d/footprint_subscriber.hpp"
+#include "tf2/utils.h"
 
 namespace nav2_costmap_2d
 {
@@ -24,8 +25,12 @@ namespace nav2_costmap_2d
 FootprintSubscriber::FootprintSubscriber(
   const nav2_util::LifecycleNode::WeakPtr & parent,
   const std::string & topic_name,
+  tf2_ros::Buffer & tf,
+  std::string robot_base_frame,
   const double & footprint_timeout)
-: topic_name_(topic_name),
+: tf_(tf),
+  robot_base_frame_(robot_base_frame),
+  topic_name_(topic_name),
   footprint_timeout_(rclcpp::Duration::from_seconds(footprint_timeout))
 {
   auto node = parent.lock();
@@ -38,8 +43,12 @@ FootprintSubscriber::FootprintSubscriber(
 FootprintSubscriber::FootprintSubscriber(
   const rclcpp::Node::WeakPtr & parent,
   const std::string & topic_name,
+  tf2_ros::Buffer & tf,
+  std::string robot_base_frame,
   const double & footprint_timeout)
-: topic_name_(topic_name),
+: tf_(tf),
+  robot_base_frame_(robot_base_frame),
+  topic_name_(topic_name),
   footprint_timeout_(rclcpp::Duration::from_seconds(footprint_timeout))
 {
   auto node = parent.lock();
@@ -86,6 +95,56 @@ FootprintSubscriber::getFootprint(
 {
   return getFootprint(footprint, footprint_timeout_);
 }
+
+bool
+FootprintSubscriber::getFootprintRaw(
+  std::vector<geometry_msgs::msg::Point> & footprint,
+  std_msgs::msg::Header & footprint_header)
+{
+  if (!footprint_received_) {
+    return false;
+  }
+
+  auto current_footprint = std::atomic_load(&footprint_);
+  footprint = toPointVector(
+    std::make_shared<geometry_msgs::msg::Polygon>(current_footprint->polygon));
+  footprint_header = current_footprint->header;
+
+  return true;
+}
+
+
+bool
+FootprintSubscriber::getFootprintInRobotFrame(
+  std::vector<geometry_msgs::msg::Point> & footprint,
+  std_msgs::msg::Header & footprint_header)
+{
+  if (!getFootprintRaw(footprint, footprint_header)) {
+    return false;
+  }
+
+  geometry_msgs::msg::PoseStamped current_pose;
+  if (!nav2_util::getCurrentPose(
+      current_pose, tf_, footprint_header.frame_id, robot_base_frame_,
+      0.1))  //0.1 - transform tollerance
+  {
+    return false;
+  }
+
+  double x = current_pose.pose.position.x;
+  double y = current_pose.pose.position.y;
+  double theta = tf2::getYaw(current_pose.pose.orientation);
+
+  std::vector<geometry_msgs::msg::Point> temp;
+  transformFootprint(-x, -y, 0, footprint, temp);
+  transformFootprint(0, 0, -theta, temp, footprint);
+
+  footprint_header.frame_id = robot_base_frame_;
+  footprint_header.stamp = current_pose.header.stamp;
+
+  return true;
+}
+
 
 void
 FootprintSubscriber::footprint_callback(const geometry_msgs::msg::PolygonStamped::SharedPtr msg)

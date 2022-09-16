@@ -79,12 +79,15 @@ RecoveryServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
   this->get_parameter("transform_tolerance", transform_tolerance_);
   costmap_sub_ = std::make_unique<nav2_costmap_2d::CostmapSubscriber>(
     shared_from_this(), costmap_topic);
-  footprint_sub_ = std::make_unique<nav2_costmap_2d::FootprintSubscriber>(
-    shared_from_this(), footprint_topic, 1.0);
+
 
   std::string global_frame, robot_base_frame;
   get_parameter("global_frame", global_frame);
   get_parameter("robot_base_frame", robot_base_frame);
+
+  footprint_sub_ = std::make_unique<nav2_costmap_2d::FootprintSubscriber>(
+    shared_from_this(), footprint_topic, *tf_, robot_base_frame, 1.0);
+
   collision_checker_ = std::make_shared<nav2_costmap_2d::CostmapTopicCollisionChecker>(
     *costmap_sub_, *footprint_sub_, *tf_, this->get_name(),
     global_frame, robot_base_frame, transform_tolerance_);

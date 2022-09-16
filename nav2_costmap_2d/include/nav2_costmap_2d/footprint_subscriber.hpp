@@ -21,6 +21,11 @@
 #include "rclcpp/rclcpp.hpp"
 #include "nav2_costmap_2d/footprint.hpp"
 #include "nav2_util/lifecycle_node.hpp"
+#include "nav2_util/robot_utils.hpp"
+
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 namespace nav2_costmap_2d
 {
@@ -38,6 +43,8 @@ public:
   FootprintSubscriber(
     const nav2_util::LifecycleNode::WeakPtr & parent,
     const std::string & topic_name,
+    tf2_ros::Buffer & tf,
+    std::string robot_base_frame,
     const double & footprint_timeout);
 
   /**
@@ -46,6 +53,8 @@ public:
   FootprintSubscriber(
     const rclcpp::Node::WeakPtr & parent,
     const std::string & topic_name,
+    tf2_ros::Buffer & tf,
+    std::string robot_base_frame,    
     const double & footprint_timeout);
 
   /**
@@ -71,6 +80,30 @@ public:
     std::vector<geometry_msgs::msg::Point> & footprint,
     rclcpp::Time & stamp, rclcpp::Duration valid_footprint_timeout);
 
+  /**
+   * @brief Returns the latest robot footprint, transformed into robot base frame (unoriented).
+   *
+   * @param footprint Output param. Latest received footprint, unoriented
+   * @param footprint_header Output param. Header associated with the footprint
+   * @return False if no footprint has been received or if transformation failed
+   */
+
+  /**
+   * @brief Returns the latest robot footprint, in the form as received from topic (oriented).
+   *
+   * @param footprint Output param. Latest received footprint
+   * @param footprint_header Output param. Header associated with the footprint
+   * @return False if no footprint has been received
+   */
+  bool getFootprintRaw(
+    std::vector<geometry_msgs::msg::Point> & footprint,
+    std_msgs::msg::Header & footprint_header);
+
+
+  bool getFootprintInRobotFrame(
+    std::vector<geometry_msgs::msg::Point> & footprint,
+    std_msgs::msg::Header & footprint_header);
+
 protected:
   rclcpp::Clock::SharedPtr clock_;
 
@@ -79,6 +112,8 @@ protected:
    */
   void footprint_callback(const geometry_msgs::msg::PolygonStamped::SharedPtr msg);
 
+  tf2_ros::Buffer & tf_;
+  std::string robot_base_frame_;
   std::string topic_name_;
   bool footprint_received_{false};
   rclcpp::Duration footprint_timeout_;
