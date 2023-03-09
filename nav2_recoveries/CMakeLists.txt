@@ -78,6 +78,17 @@ ament_target_dependencies(nav2_wait_recovery
 # prevent pluginlib from using boost
 target_compile_definitions(nav2_wait_recovery PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
 
+add_library(nav2_move_forward_recovery SHARED
+  plugins/move_forward.cpp
+)
+
+ament_target_dependencies(nav2_move_forward_recovery
+  ${dependencies}
+)
+
+# prevent pluginlib from using boost
+target_compile_definitions(nav2_move_forward_recovery PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
+
 pluginlib_export_plugin_description_file(nav2_core recovery_plugin.xml)
 
 # Library
@@ -106,6 +117,7 @@ ament_target_dependencies(${executable_name}
 
 install(TARGETS ${library_name}
                 nav2_backup_recovery
+                nav2_move_forward_recovery
                 nav2_spin_recovery
                 nav2_wait_recovery
   ARCHIVE DESTINATION lib
@@ -135,6 +147,7 @@ endif()
 ament_export_include_directories(include)
 ament_export_libraries(${library_name}
   nav2_backup_recovery
+  nav2_move_forward_recovery
   nav2_spin_recovery
   nav2_wait_recovery
 )
