@@ -60,7 +60,7 @@ public:
   /**
    * @brief  Constructor for a costmap
    */
-  LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown);
+  LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown, bool force_robot_radius_as_inscribed, double robot_radius);
 
   /**
    * @brief  Destructor
@@ -218,6 +218,9 @@ private:
   std::string global_frame_;
 
   bool rolling_window_;  /// < @brief Whether or not the costmap should roll with the robot
+
+  bool force_robot_radius_as_inscribed_;
+  double robot_radius_;
 
   bool current_;
   double minx_, miny_, maxx_, maxy_;

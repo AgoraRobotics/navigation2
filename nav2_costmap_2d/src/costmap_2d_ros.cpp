@@ -93,6 +93,7 @@ Costmap2DROS::Costmap2DROS(const rclcpp::NodeOptions & options)
   declare_parameter("resolution", rclcpp::ParameterValue(0.1));
   declare_parameter("robot_base_frame", rclcpp::ParameterValue(std::string("base_link")));
   declare_parameter("robot_radius", rclcpp::ParameterValue(0.1));
+  declare_parameter("force_robot_radius_as_inscribed", rclcpp::ParameterValue(false));
   declare_parameter("rolling_window", rclcpp::ParameterValue(false));
   declare_parameter("track_unknown_space", rclcpp::ParameterValue(false));
   declare_parameter("transform_tolerance", rclcpp::ParameterValue(0.3));
@@ -169,7 +170,7 @@ Costmap2DROS::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   // Create the costmap itself
   layered_costmap_ = std::make_unique<LayeredCostmap>(
-    global_frame_, rolling_window_, track_unknown_space_);
+    global_frame_, rolling_window_, track_unknown_space_, force_robot_radius_as_inscribed_, robot_radius_);
 
   if (!layered_costmap_->isSizeLocked()) {
     layered_costmap_->resizeMap(
@@ -370,6 +371,7 @@ Costmap2DROS::getParameters()
   get_parameter("resolution", resolution_);
   get_parameter("robot_base_frame", robot_base_frame_);
   get_parameter("robot_radius", robot_radius_);
+  get_parameter("force_robot_radius_as_inscribed", force_robot_radius_as_inscribed_);
   get_parameter("rolling_window", rolling_window_);
   get_parameter("track_unknown_space", track_unknown_space_);
   get_parameter("transform_tolerance", transform_tolerance_);

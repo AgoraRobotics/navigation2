@@ -52,10 +52,12 @@ using std::vector;
 namespace nav2_costmap_2d
 {
 
-LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown)
+LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown, bool force_robot_radius_as_inscribed, double robot_radius)
 : primary_costmap_(), combined_costmap_(),
   global_frame_(global_frame),
   rolling_window_(rolling_window),
+  force_robot_radius_as_inscribed_(force_robot_radius_as_inscribed),
+  robot_radius_(robot_radius),
   current_(false),
   minx_(0.0),
   miny_(0.0),
@@ -278,6 +280,12 @@ void LayeredCostmap::setFootprint(const std::vector<geometry_msgs::msg::Point> &
   nav2_costmap_2d::calculateMinAndMaxDistances(
     footprint_spec,
     inscribed_radius_, circumscribed_radius_);
+
+  // mizdan was here
+  if (force_robot_radius_as_inscribed_)
+  {
+    inscribed_radius_ = robot_radius_;
+  }
 
   for (vector<std::shared_ptr<Layer>>::iterator plugin = plugins_.begin();
     plugin != plugins_.end();
