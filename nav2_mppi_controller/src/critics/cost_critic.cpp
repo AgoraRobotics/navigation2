@@ -164,6 +164,11 @@ void CostCritic::score(CriticData & data)
   }
 
   data.costs += xt::pow((weight_ * repulsive_cost / traj_len), power_);
+  if (all_trajectories_collide) {
+    RCLCPP_INFO(
+        logger_,
+        "all trajectories collide!!!!!!!!!");
+  }
   data.fail_flag = all_trajectories_collide;
 }
 
