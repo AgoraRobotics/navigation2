@@ -35,6 +35,7 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/create_timer_ros.h"
 #include "nav2_costmap_2d/costmap_2d_ros.hpp"
+#include "nav2_costmap_2d/footprint_collision_checker.hpp"
 #include "pluginlib/class_loader.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "nav2_core/global_planner.hpp"
@@ -210,6 +211,17 @@ protected:
     const std::shared_ptr<nav2_msgs::srv::IsPathValid::Request> request,
     std::shared_ptr<nav2_msgs::srv::IsPathValid::Response> response);
 
+
+  /**
+   * @brief The service callback to determine if the path is still valid
+   * @param request to the service
+   * @param response from the service
+   */
+  void isPathValidCustom(
+    const std::shared_ptr<nav2_msgs::srv::IsPathValid::Request> request,
+    std::shared_ptr<nav2_msgs::srv::IsPathValid::Response> response);
+
+
   /**
    * @brief Publish a path for visualization purposes
    * @param path Reference to Global Path
@@ -237,8 +249,10 @@ protected:
   double max_planner_duration_;
   std::string planner_ids_concat_;
 
-  // Clock
-  rclcpp::Clock steady_clock_{RCL_STEADY_TIME};
+  bool enable_custom_disk_;
+  double custom_inscribed_radius_;
+  double max_check_distance_;
+  double min_lethal_points_;
 
   // TF buffer
   std::shared_ptr<tf2_ros::Buffer> tf_;
@@ -247,12 +261,15 @@ protected:
   std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros_;
   std::unique_ptr<nav2_util::NodeThread> costmap_thread_;
   nav2_costmap_2d::Costmap2D * costmap_;
+  std::unique_ptr<nav2_costmap_2d::FootprintCollisionChecker<nav2_costmap_2d::Costmap2D *>>
+  collision_checker_;
 
   // Publishers for the path
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr plan_publisher_;
 
   // Service to deterime if the path is valid
   rclcpp::Service<nav2_msgs::srv::IsPathValid>::SharedPtr is_path_valid_service_;
+  rclcpp::Service<nav2_msgs::srv::IsPathValid>::SharedPtr is_path_valid_custom_service_;
 };
 
 }  // namespace nav2_planner

@@ -30,6 +30,7 @@
 #include "nav2_util/node_utils.hpp"
 #include "nav2_util/geometry_utils.hpp"
 #include "nav2_costmap_2d/cost_values.hpp"
+#include "nav2_costmap_2d/footprint_collision_checker.hpp"
 
 #include "nav2_planner/planner_server.hpp"
 
@@ -52,6 +53,17 @@ PlannerServer::PlannerServer(const rclcpp::NodeOptions & options)
   // Declare this node's parameters
   declare_parameter("planner_plugins", default_ids_);
   declare_parameter("expected_planner_frequency", 1.0);
+
+
+  declare_parameter("enable_custom_disk", true);
+  declare_parameter("custom_inscribed_radius", 0.3);
+  declare_parameter("max_check_distance", 5.0);
+  declare_parameter("min_lethal_points", 1.0);
+
+  get_parameter("enable_custom_disk", enable_custom_disk_);
+  get_parameter("custom_inscribed_radius", custom_inscribed_radius_);
+  get_parameter("max_check_distance", max_check_distance_);
+  get_parameter("min_lethal_points", min_lethal_points_);
 
   get_parameter("planner_plugins", planner_ids_);
   if (planner_ids_ == default_ids_) {
@@ -82,6 +94,12 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   costmap_ros_->configure();
   costmap_ = costmap_ros_->getCostmap();
+
+  if (!costmap_ros_->getUseRadius()) {
+    collision_checker_ =
+      std::make_unique<nav2_costmap_2d::FootprintCollisionChecker<nav2_costmap_2d::Costmap2D *>>(
+      costmap_);
+  }
 
   // Launch a thread to run the costmap node
   costmap_thread_ = std::make_unique<nav2_util::NodeThread>(costmap_ros_);
@@ -179,6 +197,12 @@ PlannerServer::on_activate(const rclcpp_lifecycle::State & /*state*/)
     "is_path_valid",
     std::bind(
       &PlannerServer::isPathValid, this,
+      std::placeholders::_1, std::placeholders::_2));
+
+  is_path_valid_custom_service_ = node->create_service<nav2_msgs::srv::IsPathValid>(
+    "is_path_valid_custom",
+    std::bind(
+      &PlannerServer::isPathValidCustom, this,
       std::placeholders::_1, std::placeholders::_2));
 
   // Add callback for dynamic parameters
@@ -372,7 +396,7 @@ PlannerServer::computePlanThroughPoses()
 {
   std::lock_guard<std::mutex> lock(dynamic_params_lock_);
 
-  auto start_time = steady_clock_.now();
+  auto start_time = this->now();
 
   // Initialize the ComputePathToPose goal and result
   auto goal = action_server_poses_->get_current_goal();
@@ -402,14 +426,16 @@ PlannerServer::computePlanThroughPoses()
     }
 
     // Get consecutive paths through these points
-    std::vector<geometry_msgs::msg::PoseStamped>::iterator goal_iter;
     geometry_msgs::msg::PoseStamped curr_start, curr_goal;
     for (unsigned int i = 0; i != goal->goals.size(); i++) {
       // Get starting point
       if (i == 0) {
         curr_start = start;
       } else {
-        curr_start = goal->goals[i - 1];
+        // pick the end of the last planning task as the start for the next one
+        // to allow for path tolerance deviations
+        curr_start = concat_path.poses.back();
+        curr_start.header = concat_path.header;
       }
       curr_goal = goal->goals[i];
 
@@ -436,7 +462,7 @@ PlannerServer::computePlanThroughPoses()
     result->path = concat_path;
     publishPlan(result->path);
 
-    auto cycle_duration = steady_clock_.now() - start_time;
+    auto cycle_duration = this->now() - start_time;
     result->planning_time = cycle_duration;
 
     if (max_planner_duration_ && cycle_duration.seconds() > max_planner_duration_) {
@@ -462,7 +488,7 @@ PlannerServer::computePlan()
 {
   std::lock_guard<std::mutex> lock(dynamic_params_lock_);
 
-  auto start_time = steady_clock_.now();
+  auto start_time = this->now();
 
   // Initialize the ComputePathToPose goal and result
   auto goal = action_server_pose_->get_current_goal();
@@ -498,7 +524,7 @@ PlannerServer::computePlan()
     // Publish the plan for visualization purposes
     publishPlan(result->path);
 
-    auto cycle_duration = steady_clock_.now() - start_time;
+    auto cycle_duration = this->now() - start_time;
     result->planning_time = cycle_duration;
 
     if (max_planner_duration_ && cycle_duration.seconds() > max_planner_duration_) {
@@ -607,6 +633,120 @@ void PlannerServer::isPathValid(
         response->is_valid = false;
       }
     }
+  }
+}
+
+
+void PlannerServer::isPathValidCustom(
+  const std::shared_ptr<nav2_msgs::srv::IsPathValid::Request> request,
+  std::shared_ptr<nav2_msgs::srv::IsPathValid::Response> response)
+{
+  response->is_valid = true;
+
+  if (request->path.poses.empty()) {
+    response->is_valid = false;
+    return;
+  }
+
+  // Find closest path pose to current robot pose
+  unsigned int closest_point_index = 0;
+  geometry_msgs::msg::PoseStamped current_pose;
+  if (!costmap_ros_->getRobotPose(current_pose)) {
+    response->is_valid = false;
+    return;
+  }
+
+  float closest_distance = std::numeric_limits<float>::max();
+  const auto & current_point = current_pose.pose.position;
+  for (unsigned int i = 0; i < request->path.poses.size(); ++i) {
+    const auto & pt = request->path.poses[i].pose.position;
+    const float d = nav2_util::geometry_utils::euclidean_distance(current_point, pt);
+    if (d < closest_distance) {
+      closest_distance = d;
+      closest_point_index = i;
+    }
+  }
+
+  std::unique_lock<nav2_costmap_2d::Costmap2D::mutex_t> lock(*(costmap_->getMutex()));
+
+  unsigned int lethal_hits = 0;
+  const double max_dist = std::max(0.0, max_check_distance_);
+  double walked = 0.0;
+
+  // Helpers
+  const double resolution = costmap_->getResolution();
+  const double radius_m   = std::max(0.0, custom_inscribed_radius_);
+  const int radius_cells  = static_cast<int>(std::ceil(radius_m / resolution));
+
+  auto worldCellLethal = [&](unsigned int mx, unsigned int my) -> bool {
+    const unsigned char c = costmap_->getCost(mx, my);
+    return (c == nav2_costmap_2d::LETHAL_OBSTACLE);
+  };
+
+  auto diskHasLethal = [&](double wx, double wy) -> bool {
+    unsigned int cx, cy;
+    if (!costmap_->worldToMap(wx, wy, cx, cy)) {
+      return true; // outside counts as lethal
+    }
+
+    unsigned char val = costmap_->getCost(cx, cy);
+    if (val == nav2_costmap_2d::FREE_SPACE) {
+      return false; // exit early because in free space trick
+    }
+
+    const int size_x = static_cast<int>(costmap_->getSizeInCellsX());
+    const int size_y = static_cast<int>(costmap_->getSizeInCellsY());
+
+    const int min_x = std::max(0, static_cast<int>(cx) - radius_cells);
+    const int max_x = std::min(size_x - 1, static_cast<int>(cx) + radius_cells);
+    const int min_y = std::max(0, static_cast<int>(cy) - radius_cells);
+    const int max_y = std::min(size_y - 1, static_cast<int>(cy) + radius_cells);
+
+    for (int mx = min_x; mx <= max_x; ++mx) {
+      for (int my = min_y; my <= max_y; ++my) {
+        const int dx_c = mx - static_cast<int>(cx);
+        const int dy_c = my - static_cast<int>(cy);
+        const double dist = std::hypot(dx_c * resolution, dy_c * resolution);  //de optimizat !!
+        if (dist <= radius_m + 1e-9) {
+          if (worldCellLethal(static_cast<unsigned int>(mx), static_cast<unsigned int>(my))) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  // Iterate path up to max distance
+  for (unsigned int i = closest_point_index; i < request->path.poses.size(); ++i) {
+    const auto & pos = request->path.poses[i].pose.position;
+
+    bool lethal = false;
+    if (enable_custom_disk_) {
+      lethal = diskHasLethal(pos.x, pos.y);
+    } else {
+      // Fallback to footprint collision check
+      nav2_costmap_2d::Footprint footprint = costmap_ros_->getRobotFootprint();
+      const double theta = tf2::getYaw(request->path.poses[i].pose.orientation);
+      double cost = collision_checker_->footprintCostAtPose(pos.x, pos.y, theta, footprint);
+      lethal = (cost >= static_cast<int>(nav2_costmap_2d::LETHAL_OBSTACLE));
+    }
+
+    if (lethal) {
+      if (++lethal_hits > min_lethal_points_) {
+        response->is_valid = false;
+        break;
+      }
+    }
+
+    if (i + 1 >= request->path.poses.size()) break;
+
+    // Accumulate walked distance
+    const auto & next_pos = request->path.poses[i + 1].pose.position;
+    walked += nav2_util::geometry_utils::euclidean_distance(
+      pos, next_pos);
+
+    if (walked >= max_dist) break;
   }
 }
 
