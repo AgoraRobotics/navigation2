@@ -27,7 +27,7 @@
 #include "nav2_core/goal_checker.hpp"
 #include "nav2_costmap_2d/costmap_2d_ros.hpp"
 #include "tf2_ros/transform_listener.h"
-#include "nav2_msgs/action/follow_path.hpp"
+#include "modulab_mission_msgs/action/follow_path.hpp"
 #include "nav2_msgs/msg/speed_limit.hpp"
 #include "nav_2d_utils/odom_subscriber.hpp"
 #include "nav2_util/lifecycle_node.hpp"
@@ -50,6 +50,7 @@ class ControllerServer : public nav2_util::LifecycleNode
 public:
   using ControllerMap = std::unordered_map<std::string, nav2_core::Controller::Ptr>;
   using GoalCheckerMap = std::unordered_map<std::string, nav2_core::GoalChecker::Ptr>;
+  using ProgressCheckerMap = std::unordered_map<std::string, nav2_core::ProgressChecker::Ptr>;
 
   /**
    * @brief Constructor for nav2_controller::ControllerServer
@@ -107,7 +108,7 @@ protected:
    */
   nav2_util::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state) override;
 
-  using Action = nav2_msgs::action::FollowPath;
+  using Action = modulab_mission_msgs::action::FollowPath;
   using ActionServer = nav2_util::SimpleActionServer<Action>;
 
   // Our action server implements the FollowPath action
@@ -224,11 +225,12 @@ protected:
 
   // Progress Checker Plugin
   pluginlib::ClassLoader<nav2_core::ProgressChecker> progress_checker_loader_;
-  nav2_core::ProgressChecker::Ptr progress_checker_;
-  std::string default_progress_checker_id_;
-  std::string default_progress_checker_type_;
-  std::string progress_checker_id_;
-  std::string progress_checker_type_;
+  ProgressCheckerMap progress_checkers_;
+  std::vector<std::string> default_progress_checker_ids_;
+  std::vector<std::string> default_progress_checker_types_;
+  std::vector<std::string> progress_checker_ids_;
+  std::vector<std::string> progress_checker_types_;
+  std::string progress_checker_ids_concat_, current_progress_checker_;
 
   // Goal Checker Plugin
   pluginlib::ClassLoader<nav2_core::GoalChecker> goal_checker_loader_;

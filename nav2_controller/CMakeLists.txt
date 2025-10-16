@@ -13,6 +13,7 @@ find_package(nav2_util REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(nav_2d_utils REQUIRED)
 find_package(nav_2d_msgs REQUIRED)
+find_package(modulab_mission_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 
 nav2_package()
@@ -42,6 +43,7 @@ set(dependencies
   nav2_msgs
   nav_2d_utils
   nav_2d_msgs
+  modulab_mission_msgs
   nav2_util
   nav2_core
   pluginlib
