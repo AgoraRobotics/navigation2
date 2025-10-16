@@ -443,7 +443,6 @@ void ControllerServer::computeControl()
     rclcpp::WallRate loop_rate(controller_frequency_);
     while (rclcpp::ok()) {
       auto start_time = this->now();
-      
       if (action_server_ == nullptr || !action_server_->is_server_active()) {
         RCLCPP_DEBUG(get_logger(), "Action server unavailable or inactive. Stopping.");
         return;
@@ -473,7 +472,7 @@ void ControllerServer::computeControl()
 
       auto cycle_duration = this->now() - start_time;
       if (!loop_rate.sleep()) {
-         RCLCPP_WARN(
+        RCLCPP_WARN(
           get_logger(),
           "Control loop missed its desired rate of %.4f Hz. Current loop rate is %.4f Hz.",
           controller_frequency_, 1 / cycle_duration.seconds());
@@ -596,7 +595,7 @@ void ControllerServer::computeAndPublishVelocity()
 void ControllerServer::updateGlobalPath()
 {
   if (action_server_->is_preempt_requested()) {
-    RCLCPP_INFO(get_logger(), "Passing new path to controller.");
+    // RCLCPP_INFO(get_logger(), "Passing new path to controller.");
     auto goal = action_server_->accept_pending_goal();
     std::string current_controller;
     if (findControllerId(goal->controller_id, current_controller)) {

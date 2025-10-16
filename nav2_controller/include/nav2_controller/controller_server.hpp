@@ -144,9 +144,19 @@ protected:
   bool findGoalCheckerId(const std::string & c_name, std::string & name);
 
   /**
+   * @brief Find the valid progress checker ID name for the specified parameter
+   *
+   * @param c_name The progress checker name
+   * @param name Reference to the name to use for progress checking if any valid available
+   * @return bool Whether it found a valid progress checker to use
+   */
+  bool findProgressCheckerId(const std::string & c_name, std::string & name);
+
+  /**
    * @brief Assigns path to controller
    * @param path Path received from action server
    */
+   
   void setPlannerPath(const nav_msgs::msg::Path & path);
   /**
    * @brief Calculates velocity and publishes to "cmd_vel" topic
