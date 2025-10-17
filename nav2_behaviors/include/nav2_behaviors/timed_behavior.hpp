@@ -184,7 +184,9 @@ protected:
   // onRun and cycle functions to execute a specific behavior
   void execute()
   {
-    RCLCPP_INFO(logger_, "Running %s", behavior_name_.c_str());
+    if (behavior_name_ != "wait") {
+      RCLCPP_INFO(logger_, "Running %s", behavior_name_.c_str());
+    }
 
     if (!enabled_) {
       RCLCPP_WARN(
@@ -210,14 +212,6 @@ protected:
 
     while (rclcpp::ok()) {
       elasped_time_ = steady_clock_.now() - start_time;
-      if (action_server_->is_cancel_requested()) {
-        RCLCPP_INFO(logger_, "Canceling %s", behavior_name_.c_str());
-        stopRobot();
-        result->total_elapsed_time = elasped_time_;
-        action_server_->terminate_all(result);
-        onActionCompletion();
-        return;
-      }
 
       // TODO(orduno) #868 Enable preempting a Behavior on-the-fly without stopping
       if (action_server_->is_preempt_requested()) {
@@ -232,11 +226,22 @@ protected:
         return;
       }
 
+      if (action_server_->is_cancel_requested()) {
+        RCLCPP_INFO(logger_, "Canceling %s", behavior_name_.c_str());
+        stopRobot();
+        result->total_elapsed_time = elasped_time_;
+        action_server_->terminate_all(result);
+        onActionCompletion();
+        return;
+      }
+
       switch (onCycleUpdate()) {
         case Status::SUCCEEDED:
-          RCLCPP_INFO(
-            logger_,
-            "%s completed successfully", behavior_name_.c_str());
+          if (behavior_name_ != "wait") {
+            RCLCPP_INFO(
+              logger_,
+              "%s completed successfully", behavior_name_.c_str());
+          }
           result->total_elapsed_time = steady_clock_.now() - start_time;
           action_server_->succeeded_current(result);
           onActionCompletion();
