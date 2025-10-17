@@ -231,6 +231,9 @@ protected:
    */
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr enable_service_;
 
+
+  std::vector<geometry_msgs::msg::Point> transformed_footprint_;
+
 private:
   /**
    * @brief: Latest robot position

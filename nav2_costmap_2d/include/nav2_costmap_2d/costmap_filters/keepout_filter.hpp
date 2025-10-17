@@ -45,6 +45,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "nav2_msgs/msg/costmap_filter_info.hpp"
+#include "nav2_costmap_2d/footprint.hpp"
 
 namespace nav2_costmap_2d
 {
@@ -96,11 +97,15 @@ private:
    */
   void maskCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
 
+  bool isPointInsideRobot(const double msk_wx, const double msk_wy, const std::vector<geometry_msgs::msg::Point> & transformed_footprint_);
+  std::vector<geometry_msgs::msg::Point> inflatePolygon(const std::vector<geometry_msgs::msg::Point> & footprint, const double inflation_distance);
+
   rclcpp::Subscription<nav2_msgs::msg::CostmapFilterInfo>::SharedPtr filter_info_sub_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr mask_sub_;
 
   std::unique_ptr<Costmap2D> mask_costmap_;
 
+  double footprint_padding;
   std::string mask_frame_;  // Frame where mask located in
   std::string global_frame_;  // Frame of currnet layer (master_grid)
 };

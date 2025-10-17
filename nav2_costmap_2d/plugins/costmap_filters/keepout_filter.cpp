@@ -63,6 +63,10 @@ void KeepoutFilter::initializeFilter(
     throw std::runtime_error{"Failed to lock node"};
   }
 
+
+  declareParameter("footprint_padding", rclcpp::ParameterValue(-0.03));
+  node->get_parameter(name_ + "." + "footprint_padding", footprint_padding);
+
   filter_info_topic_ = filter_info_topic;
   // Setting new costmap filter info subscriber
   RCLCPP_INFO(
@@ -147,10 +151,79 @@ void KeepoutFilter::maskCallback(
   mask_frame_ = msg->header.frame_id;
 }
 
+
+std::vector<geometry_msgs::msg::Point> KeepoutFilter::inflatePolygon(const std::vector<geometry_msgs::msg::Point> & footprint, const double inflation_distance) {
+  const size_t n = footprint.size();
+  std::vector<geometry_msgs::msg::Point> inflated_polygon(n);
+
+  for (size_t i = 0; i < n; ++i) {
+      // Get previous, current, and next vertex
+      geometry_msgs::msg::Point p_prev = footprint[(i + n - 1) % n];
+      geometry_msgs::msg::Point p_curr = footprint[i];
+      geometry_msgs::msg::Point p_next = footprint[(i + 1) % n];
+
+      // Compute two edge vectors
+      double edge1_x = p_curr.x - p_prev.x;
+      double edge1_y = p_curr.y - p_prev.y;
+      double edge2_x = p_next.x - p_curr.x;
+      double edge2_y = p_next.y - p_curr.y;
+
+      // Normalize edge vectors
+      const double len1 = std::sqrt(edge1_x * edge1_x + edge1_y * edge1_y);
+      const double len2 = std::sqrt(edge2_x * edge2_x + edge2_y * edge2_y);
+
+      if (len1 > 0) { edge1_x /= len1; edge1_y /= len1; }
+      if (len2 > 0) { edge2_x /= len2; edge2_y /= len2; }
+
+      // Compute the average normal (rotated 90 degrees outward)
+      double normal_x = (edge1_y + edge2_y);
+      double normal_y = -(edge1_x + edge2_x);
+
+      // Normalize the normal vector
+      const double normal_length = std::sqrt(normal_x * normal_x + normal_y * normal_y);
+      if (normal_length > 0) {
+          normal_x = (normal_x / normal_length) * inflation_distance;
+          normal_y = (normal_y / normal_length) * inflation_distance;
+      }
+
+      // Apply inflation to the vertex
+      inflated_polygon[i].x = p_curr.x + normal_x;
+      inflated_polygon[i].y = p_curr.y + normal_y;
+  }
+
+
+  return inflated_polygon;
+}
+
+
+bool KeepoutFilter::isPointInsideRobot(const double msk_wx, const double msk_wy, const std::vector<geometry_msgs::msg::Point> & transformed_footprint_)
+{
+  const size_t n = transformed_footprint_.size();
+
+  // Determine the reference sign using the first edge
+  geometry_msgs::msg::Point p1 = transformed_footprint_[0];
+  geometry_msgs::msg::Point p2 = transformed_footprint_[1];
+  const double ref_cross = (p2.x - p1.x) * (msk_wy - p1.y) - (p2.y - p1.y) * (msk_wx - p1.x);
+
+  for (size_t i = 1; i < n; ++i) {
+      p1 = transformed_footprint_[i];
+      p2 = transformed_footprint_[(i + 1) % n];
+
+      const double cross = (p2.x - p1.x) * (msk_wy - p1.y) - (p2.y - p1.y) * (msk_wx - p1.x);
+
+      if ((ref_cross > 0 && cross < 0) || (ref_cross < 0 && cross > 0)) {
+          return false; // The point is outside if it is not consistently on the same side.
+      }
+  }
+
+  return true; // The point is inside if all cross products have the same sign.
+}
+
+
 void KeepoutFilter::process(
   nav2_costmap_2d::Costmap2D & master_grid,
   int min_i, int min_j, int max_i, int max_j,
-  const geometry_msgs::msg::Pose2D & /*pose*/)
+  const geometry_msgs::msg::Pose2D & pose)
 {
   std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
@@ -161,6 +234,19 @@ void KeepoutFilter::process(
       "KeepoutFilter: Filter mask was not received");
     return;
   }
+
+  auto footprint = getFootprint();
+
+  if (footprint.size() < 3) {
+    RCLCPP_WARN_THROTTLE(
+      logger_, *(clock_), 2000,
+      "KeepoutFilter: Robot footprint must have at least 3 points");
+    return;
+  }
+
+  // inflation with half a pixel (1 pixel = 5cm) to overcome rounding errors
+  auto inflated_footprint = inflatePolygon(footprint, footprint_padding);
+  transformFootprint(pose.x, pose.y, pose.theta, inflated_footprint, transformed_footprint_);
 
   tf2::Transform tf2_transform;
   tf2_transform.setIdentity();  // initialize by identical transform
@@ -286,6 +372,12 @@ void KeepoutFilter::process(
         if (data > old_data || old_data == NO_INFORMATION) {
           master_array[index] = data;
         }
+
+        // check if point is inside robot footprint
+        if (data == LETHAL_OBSTACLE && isPointInsideRobot(gl_wx, gl_wy, transformed_footprint_)) {
+            master_array[index] = old_data;
+        }
+
       }
     }
   }
