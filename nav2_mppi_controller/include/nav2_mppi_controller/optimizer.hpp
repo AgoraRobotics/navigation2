@@ -114,7 +114,7 @@ public:
   /**
    * @brief Reset the optimization problem to initial conditions
    */
-  void reset();
+  void reset(const bool reset_everything);
 
 protected:
   /**

@@ -86,7 +86,8 @@ TEST(ParameterHandlerTest, PrePostDynamicCallbackTest)
       pre_triggered = true;
     };
 
-  auto postCb = [&]() {
+  auto postCb = [&](const bool reset_everything) {
+    (void) reset_everything;
       if (!pre_triggered) {
         throw std::runtime_error("Pre-callback was not triggered before post-callback!");
       }

@@ -1,3 +1,4 @@
+// Copyright (c) 2022 Samsung Research America, @artofnothingness Alexey Budyakov
 // Copyright (c) 2023 Open Navigation LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NAV2_MPPI_CONTROLLER__CRITICS__PATH_ALIGN_CRITIC_HPP_
-#define NAV2_MPPI_CONTROLLER__CRITICS__PATH_ALIGN_CRITIC_HPP_
+#ifndef NAV2_MPPI_CONTROLLER__CRITICS__AGORA_PATH_FOLLOW_CRITIC_HPP_
+#define NAV2_MPPI_CONTROLLER__CRITICS__AGORA_PATH_FOLLOW_CRITIC_HPP_
 
 #include "nav2_mppi_controller/critic_function.hpp"
 #include "nav2_mppi_controller/models/state.hpp"
@@ -24,12 +25,13 @@ namespace mppi::critics
 
 /**
  * @class mppi::critics::ConstraintCritic
- * @brief Critic objective function for aligning to the path. Note:
- * High settings of this will follow the path more precisely, but also makes it
- * difficult (or impossible) to deviate in the presence of dynamic obstacles.
- * This is an important critic to tune and consider in tandem with Obstacle.
+ * @brief Critic objective function for following the path approximately
+ * To allow for deviation from path in case of dynamic obstacles. Path Align
+ * is what aligns the trajectories to the path more or less precisely, if desireable.
+ * A higher weight here with an offset > 1 will accelerate the samples to full speed
+ * faster and push the follow point further ahead, creating some shortcutting.
  */
-class PathAlignCritic : public CriticFunction
+class AgoraPathFollowCritic : public CriticFunction
 {
 public:
   /**
@@ -38,22 +40,23 @@ public:
   void initialize() override;
 
   /**
-   * @brief Evaluate cost related to trajectories path alignment
+   * @brief Evaluate cost related to robot orientation at goal pose
+   * (considered only if robot near last goal in current plan)
    *
-   * @param costs [out] add reference cost values to this tensor
+   * @param costs [out] add goal angle cost values to this tensor
    */
   void score(CriticData & data) override;
 
 protected:
-  size_t offset_from_furthest_{0};
-  int trajectory_point_step_{0};
   float threshold_to_consider_{0};
-  float max_path_occupancy_ratio_{0};
-  bool use_path_orientations_{false};
+
   unsigned int power_{0};
+  int trajectory_offset_;
+  int path_carrot_index_;
+  double carrot_dist_;
   float weight_{0};
 };
 
 }  // namespace mppi::critics
 
-#endif  // NAV2_MPPI_CONTROLLER__CRITICS__PATH_ALIGN_CRITIC_HPP_
+#endif  // NAV2_MPPI_CONTROLLER__CRITICS__AGORA_PATH_FOLLOW_CRITIC_HPP_

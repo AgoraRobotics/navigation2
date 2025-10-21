@@ -103,16 +103,27 @@ public:
     generated_trajectories_.x = 432.234 * xt::ones<float>({7865, 1});
   }
 
-  void testReset()
+  void testResetEverything()
   {
-    reset();
-
+    reset(true);
     EXPECT_EQ(state_.vx, xt::zeros<float>({1000, 50}));
     EXPECT_EQ(control_sequence_.vx, xt::zeros<float>({50}));
     EXPECT_EQ(control_history_[0].vx, 0.0);
     EXPECT_EQ(control_history_[0].vy, 0.0);
     EXPECT_NEAR(xt::sum(costs_, immediate)(), 0, 1e-6);
     EXPECT_EQ(generated_trajectories_.x, xt::zeros<float>({1000, 50}));
+  }
+
+  void testPartialReset()
+  {
+    reset(false);
+    EXPECT_EQ(state_.vx, 0.43432 * xt::ones<float>({1000, 10}));
+    EXPECT_EQ(control_sequence_.vx, 342.0 * xt::ones<float>({30}));
+    EXPECT_EQ(control_history_[0].vx, 43);
+    EXPECT_EQ(control_history_[0].vy, 5646);
+    EXPECT_NEAR(xt::sum(costs_, immediate)(), 56453 * 5.32, 1e-6);
+    EXPECT_EQ(generated_trajectories_.x, xt::zeros<float>({1000, 50}));
+    // TODO: this should have tested for noise generator reset, but since this testing codebase does have logic for it, I did not add it either
   }
 
   bool fallbackWrapper(bool fail)
@@ -245,7 +256,7 @@ TEST(OptimizerTests, BasicInitializedFunctions)
   EXPECT_EQ(traj.shape(0), 50u);
   EXPECT_EQ(traj.shape(1), 3u);
 
-  optimizer_tester.reset();
+  optimizer_tester.reset(true);
   optimizer_tester.shutdown();
 }
 
@@ -318,7 +329,10 @@ TEST(OptimizerTests, resetTests)
 
   // Tests resetting the full state of all the functions after filling with garbage
   optimizer_tester.fillOptimizerWithGarbage();
-  optimizer_tester.testReset();
+  optimizer_tester.testResetEverything();
+
+  optimizer_tester.fillOptimizerWithGarbage();
+  optimizer_tester.testPartialReset();
 }
 
 TEST(OptimizerTests, FallbackTests)
@@ -389,7 +403,7 @@ TEST(OptimizerTests, shiftControlSequenceTests)
 
   // Test shiftControlSequence by setting the 2nd value to something unique to neighbors
   auto & sequence = optimizer_tester.grabControlSequence();
-  sequence.reset({100});
+  sequence.reset(100);
   sequence.vx(0) = 9999;
   sequence.vx(1) = 6;
   sequence.vx(2) = 888;

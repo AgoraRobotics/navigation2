@@ -42,7 +42,7 @@ class ParametersHandler
 {
 public:
   using get_param_func_t = void (const rclcpp::Parameter & param);
-  using post_callback_t = void ();
+  using post_callback_t = void (bool);
   using pre_callback_t = void ();
 
   /**

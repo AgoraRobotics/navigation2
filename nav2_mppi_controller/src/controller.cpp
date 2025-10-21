@@ -74,7 +74,7 @@ void MPPIController::deactivate()
 
 void MPPIController::reset()
 {
-  optimizer_.reset();
+  optimizer_.reset(true);
 }
 
 geometry_msgs::msg::TwistStamped MPPIController::computeVelocityCommands(
@@ -86,13 +86,16 @@ geometry_msgs::msg::TwistStamped MPPIController::computeVelocityCommands(
   auto start = std::chrono::system_clock::now();
 #endif
 
+  std::lock_guard<std::mutex> param_lock(*parameters_handler_->getLock());
+
   if (clock_->now() - last_time_called_ > rclcpp::Duration::from_seconds(reset_period_)) {
     reset();
   }
   last_time_called_ = clock_->now();
-
-  std::lock_guard<std::mutex> lock(*parameters_handler_->getLock());
   nav_msgs::msg::Path transformed_plan = path_handler_.transformPath(robot_pose);
+
+  nav2_costmap_2d::Costmap2D * costmap = costmap_ros_->getCostmap();
+  std::unique_lock<nav2_costmap_2d::Costmap2D::mutex_t> costmap_lock(*(costmap->getMutex()));
 
   geometry_msgs::msg::TwistStamped cmd =
     optimizer_.evalControl(robot_pose, robot_speed, transformed_plan, goal_checker);
@@ -112,7 +115,7 @@ geometry_msgs::msg::TwistStamped MPPIController::computeVelocityCommands(
 
 void MPPIController::visualize(nav_msgs::msg::Path transformed_plan)
 {
-  trajectory_visualizer_.add(optimizer_.getGeneratedTrajectories(), "Candidate Trajectories");
+  // trajectory_visualizer_.add(optimizer_.getGeneratedTrajectories(), "Candidate Trajectories");
   trajectory_visualizer_.add(optimizer_.getOptimizedTrajectory(), "Optimal Trajectory");
   trajectory_visualizer_.visualize(std::move(transformed_plan));
 }
